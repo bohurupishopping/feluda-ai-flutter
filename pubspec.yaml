@@ -32,6 +32,8 @@ dependencies:
     sdk: flutter
   supabase_flutter: ^1.10.25
   http: ^1.1.0
+  flutter_markdown: ^0.6.18
+  uuid: ^4.3.3
 
 
   # The following adds the Cupertino Icons font to your application.
@@ -90,3 +92,9 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+  assets:
+    - assets/
+    - assets/ai.png
+    - assets/ai-icon.png
+    - assets/pritam-img.png
