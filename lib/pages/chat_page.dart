@@ -11,6 +11,10 @@ import 'package:feluda_ai/components/typing_indicator.dart';
 import 'package:feluda_ai/services/conversation_service.dart';
 import 'package:feluda_ai/utils/assets.dart';
 import 'package:feluda_ai/components/network_aware_widget.dart';
+import 'dart:io';
+import 'package:file_picker/file_picker.dart';
+import 'package:feluda_ai/services/file_picker_service.dart';
+import 'package:cross_file/cross_file.dart';
 
 class ChatMessage {
   final String text;
@@ -55,6 +59,9 @@ class _ChatPageState extends State<ChatPage> {
   late final ConversationService _conversationService;
   String? _currentSessionId;
   bool _isLoadingHistory = false;
+  XFile? _selectedFile;
+  bool _isFileUploading = false;
+  final _filePickerService = FilePickerService();
 
   @override
   void initState() {
@@ -158,9 +165,47 @@ I'm your AI assistant, ready to help you with:
     }
   }
 
+  Future<void> _pickFile() async {
+    try {
+      final file = await _filePickerService.pickFile();
+      if (file != null) {
+        await _filePickerService.validateFile(file);
+        setState(() {
+          _selectedFile = file;
+        });
+        
+        // Show selected file name
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Selected file: ${file.name}'),
+              action: SnackBarAction(
+                label: 'Remove',
+                onPressed: () {
+                  setState(() {
+                    _selectedFile = null;
+                  });
+                },
+              ),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString()),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _sendMessage() async {
     final message = _messageController.text.trim();
-    if (message.isEmpty) return;
+    if (message.isEmpty && _selectedFile == null) return;
 
     if (_messages.length == 1 && !_messages[0].isUser && _currentSessionId == null) {
       setState(() {
@@ -185,16 +230,33 @@ I'm your AI assistant, ready to help you with:
     _scrollToBottom();
 
     try {
-      final previousMessages = _messages
-          .where((msg) => msg.role != 'welcome')
-          .map((msg) => msg.toJson())
-          .toList();
-
-      final response = await _apiService.getChatCompletion(
-        message,
-        previousMessages,
-        model: _selectedModel,
-      );
+      String response;
+      
+      if (_selectedFile != null) {
+        // Handle file upload and processing
+        setState(() => _isFileUploading = true);
+        
+        response = await _apiService.getChatCompletionWithFile(
+          prompt: message,
+          file: _selectedFile!,
+          model: _selectedModel,
+        );
+        
+        setState(() {
+          _isFileUploading = false;
+          _selectedFile = null;
+        });
+      } else {
+        // Regular text message
+        response = await _apiService.getChatCompletion(
+          message,
+          _messages
+              .where((msg) => msg.role != 'welcome')
+              .map((msg) => msg.toJson())
+              .toList(),
+          model: _selectedModel,
+        );
+      }
 
       if (mounted) {
         _addMessage(ChatMessage(
@@ -210,7 +272,6 @@ I'm your AI assistant, ready to help you with:
         });
         
         await _conversationService.saveConversation(message, response);
-        
         _scrollToBottom();
       }
     } catch (e) {
@@ -218,6 +279,7 @@ I'm your AI assistant, ready to help you with:
         setState(() {
           _isLoading = false;
           _isTyping = false;
+          _selectedFile = null;
         });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -499,9 +561,7 @@ I'm your AI assistant, ready to help you with:
                                             Icons.attach_file,
                                             color: Theme.of(context).primaryColor.withOpacity(0.7),
                                           ),
-                                          onPressed: () {
-                                            // TODO: Implement file attachment
-                                          },
+                                          onPressed: _pickFile,
                                         ),
                                       ],
                                     ),

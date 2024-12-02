@@ -1,8 +1,11 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:feluda_ai/utils/constants.dart';
 import 'package:feluda_ai/models/ai_model.dart';
 import 'package:feluda_ai/services/chat_logic_service.dart';
+import 'package:feluda_ai/services/vision_api_service.dart';
+import 'package:cross_file/cross_file.dart';
 
 class ApiService {
   static const String _openRouterBaseUrl = 'https://openrouter.ai/api/v1';
@@ -143,5 +146,25 @@ class ApiService {
     } else {
       throw Exception('Failed to get Groq response: ${response.statusCode}');
     }
+  }
+
+  Future<String> getChatCompletionWithFile({
+    required String prompt,
+    required XFile file,
+    required AIModel model,
+  }) async {
+    if (model.id.startsWith('gemini-')) {
+      // For Gemini models, use vision API
+      final visionService = VisionApiService();
+      return visionService.analyzeFile(
+        file: file,
+        prompt: prompt,
+        model: model,
+        systemPrompt: 'You are FeludaAI, an intelligent assistant. Analyze this file and provide a detailed response.',
+      );
+    }
+
+    // For other models, use regular chat completion
+    return getChatCompletion(prompt, [], model: model);
   }
 } 
