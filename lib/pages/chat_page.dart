@@ -348,19 +348,36 @@ I'm your AI assistant, ready to help you with:
         appBar: AppBar(
           elevation: 0,
           backgroundColor: Colors.transparent,
-          flexibleSpace: ClipRect(
+          flexibleSpace: ClipRRect(
+            borderRadius: const BorderRadius.only(
+              bottomLeft: Radius.circular(20),
+              bottomRight: Radius.circular(20),
+            ),
             child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+              filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
               child: Container(
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      Color(0xFFE8EEFF),  // Light professional blue
-                      Color(0xFFE2E8FF),  // Slightly deeper professional blue
+                      Colors.blue.withOpacity(0.15),
+                      Colors.purple.withOpacity(0.05),
                     ],
                   ),
+                  border: Border(
+                    bottom: BorderSide(
+                      color: Colors.white.withOpacity(0.2),
+                      width: 0.5,
+                    ),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -372,40 +389,57 @@ I'm your AI assistant, ready to help you with:
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: Theme.of(context).primaryColor.withOpacity(0.2),
-                    width: 0.5,
+                    color: Theme.of(context).primaryColor.withOpacity(0.3),
+                    width: 1.5,
                   ),
                   gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                     colors: [
-                      Theme.of(context).primaryColor.withOpacity(0.1),
-                      Theme.of(context).primaryColor.withOpacity(0.05),
+                      Colors.white.withOpacity(0.8),
+                      Colors.white.withOpacity(0.3),
                     ],
                   ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Theme.of(context).primaryColor.withOpacity(0.2),
+                      blurRadius: 8,
+                      spreadRadius: 1,
+                    ),
+                  ],
                 ),
                 child: CircleAvatar(
-                  radius: 12,
+                  radius: 14,
                   backgroundImage: AssetImage(Assets.aiIcon),
                 ),
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'FeludaAI',
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: 16,
                         fontWeight: FontWeight.w600,
+                        color: Theme.of(context).primaryColor,
+                        shadows: [
+                          Shadow(
+                            color: Colors.black.withOpacity(0.1),
+                            offset: const Offset(0, 1),
+                            blurRadius: 2,
+                          ),
+                        ],
                       ),
                     ),
                     if (_currentSessionId != null)
                       Text(
                         'Continuing conversation',
                         style: TextStyle(
-                          fontSize: 10,
-                          color: Theme.of(context).textTheme.bodySmall?.color,
+                          fontSize: 11,
+                          color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.7),
                         ),
                       ),
                   ],
@@ -414,53 +448,50 @@ I'm your AI assistant, ready to help you with:
             ],
           ),
           actions: [
-            Padding(
-              padding: const EdgeInsets.only(right: 4),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                color: Colors.white.withOpacity(0.1),
+              ),
               child: ModelSelector(
                 selectedModel: _selectedModel,
                 onModelChange: _handleModelChange,
               ),
             ),
-            SizedBox(
-              width: 32,
-              child: IconButton(
-                icon: const Icon(Icons.clear, size: 20),
-                onPressed: () async {
-                  try {
-                    await _conversationService.clearConversationHistory();
-                    setState(() {
-                      _messages.clear();
-                    });
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Chat history cleared')),
-                      );
-                    }
-                  } catch (e) {
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Error clearing chat history: ${e.toString()}'),
-                          backgroundColor: FeludaTheme.errorColor,
-                        ),
-                      );
-                    }
+            _buildHeaderIconButton(
+              icon: Icons.clear,
+              onPressed: () async {
+                try {
+                  await _conversationService.clearConversationHistory();
+                  setState(() {
+                    _messages.clear();
+                  });
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Chat history cleared')),
+                    );
                   }
-                },
-                tooltip: 'Clear chat',
-                padding: EdgeInsets.zero,
-              ),
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Error clearing chat history: ${e.toString()}'),
+                        backgroundColor: FeludaTheme.errorColor,
+                      ),
+                    );
+                  }
+                }
+              },
+              tooltip: 'Clear chat',
             ),
-            SizedBox(
-              width: 32,
-              child: IconButton(
-                icon: const Icon(Icons.add, size: 20),
-                onPressed: _startNewChat,
-                tooltip: 'New Chat',
-                padding: EdgeInsets.zero,
-              ),
+            _buildHeaderIconButton(
+              icon: Icons.add,
+              onPressed: _startNewChat,
+              tooltip: 'New Chat',
             ),
-            const SizedBox(width: 4),
+            const SizedBox(width: 8),
           ],
         ),
         drawer: const AppDrawer(),
@@ -486,181 +517,280 @@ I'm your AI assistant, ready to help you with:
             : Container(
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    stops: [0.0, 0.3, 0.6, 1.0],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
                     colors: [
-                      Color(0xFFE8EEFF),  // Light professional blue
-                      Color(0xFFE2E8FF),  // Slightly deeper professional blue
-                      Color(0xFFDBE4FF),  // Medium professional blue
-                      Color(0xFFD4E0FF),  // Deep professional blue
+                      Color(0xFFCCEBFC),  // Lighter blue
+                      Color(0xFFFFF6F3),  // Lighter peach
                     ],
+                    stops: [0.0, 0.8],    // Adjust gradient distribution
                   ),
                 ),
-                child: Column(
+                child: Stack(
                   children: [
-                    Expanded(
-                      child: AnimatedList(
-                        key: _listKey,
-                        controller: _scrollController,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: FeludaTheme.spacing16,
-                          vertical: FeludaTheme.spacing8,
+                    // Add subtle pattern overlay
+                    Positioned.fill(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              Colors.white.withOpacity(0.1),
+                              Colors.white.withOpacity(0.05),
+                              Colors.white.withOpacity(0.1),
+                            ],
+                          ),
                         ),
-                        initialItemCount: _messages.length,
-                        itemBuilder: (context, index, animation) {
-                          final message = _messages[index];
-                          return SlideTransition(
-                            position: animation.drive(Tween(
-                              begin: Offset(
-                                message.isUser ? 1.0 : -1.0,
-                                0.0,
-                              ),
-                              end: Offset.zero,
-                            ).chain(CurveTween(
-                              curve: Curves.easeOutCubic,
-                            ))),
-                            child: ChatBubble(
-                              message: message,
-                              animation: animation,
-                              onEdit: message.isUser ? _handleMessageEdit : null,
-                            ),
-                          );
-                        },
                       ),
                     ),
-                    if (_isTyping)
-                      const TypingIndicator(),
-                    Container(
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Color(0xFFE8EEFF),  // Light professional blue
-                            Color(0xFFE2E8FF),  // Slightly deeper professional blue
-                          ],
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF4B7BFF).withOpacity(0.03),
-                            blurRadius: 8,
-                            offset: const Offset(0, -2),
-                          ),
-                        ],
-                      ),
-                      child: ClipRect(
-                        child: BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-                          child: Padding(
-                            padding: EdgeInsets.only(
-                              left: FeludaTheme.spacing16,
-                              right: FeludaTheme.spacing16,
-                              top: FeludaTheme.spacing12,
-                              bottom: MediaQuery.of(context).padding.bottom + FeludaTheme.spacing12,
+                    Column(
+                      children: [
+                        Expanded(
+                          child: AnimatedList(
+                            key: _listKey,
+                            controller: _scrollController,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: FeludaTheme.spacing16,
+                              vertical: FeludaTheme.spacing8,
                             ),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(24),
-                                      border: Border.all(
-                                        color: const Color(0xFFCCDBFF),  // Darker blue border
-                                      ),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: const Color(0xFF3366FF).withOpacity(0.05),  // Darker blue shadow
-                                          blurRadius: 4,
-                                          offset: const Offset(0, 2),
-                                        ),
-                                      ],
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        IconButton(
-                                          onPressed: _pickFile,
-                                          icon: Icon(
-                                            Icons.attach_file,
-                                            size: 20,
-                                            color: Colors.grey.shade600,
-                                          ),
-                                          tooltip: 'Attach file',
-                                        ),
-                                        Expanded(
-                                          child: TextField(
-                                            controller: _messageController,
-                                            decoration: InputDecoration(
-                                              hintText: 'Type a message...',
-                                              hintStyle: TextStyle(
-                                                color: Colors.grey.shade400,
-                                                fontSize: 14,
-                                              ),
-                                              border: InputBorder.none,
-                                              contentPadding: const EdgeInsets.symmetric(
-                                                horizontal: 16,
-                                                vertical: 12,
-                                              ),
-                                            ),
-                                            minLines: 1,
-                                            maxLines: 5,
-                                            textInputAction: TextInputAction.newline,
-                                            onSubmitted: (value) {
-                                              if (!_isLoading) _sendMessage();
-                                            },
-                                          ),
-                                        ),
-                                        Container(
-                                          margin: const EdgeInsets.all(4),
-                                          decoration: BoxDecoration(
-                                            gradient: LinearGradient(
-                                              colors: [
-                                                Theme.of(context).primaryColor,
-                                                Theme.of(context).primaryColor.withOpacity(0.8),
-                                              ],
-                                            ),
-                                            borderRadius: BorderRadius.circular(20),
-                                          ),
-                                          child: Material(
-                                            color: Colors.transparent,
-                                            child: IconButton(
-                                              onPressed: _isLoading ? null : _sendMessage,
-                                              icon: AnimatedSwitcher(
-                                                duration: const Duration(milliseconds: 200),
-                                                child: _isLoading
-                                                    ? const SizedBox(
-                                                        width: 20,
-                                                        height: 20,
-                                                        child: CircularProgressIndicator(
-                                                          strokeWidth: 2,
-                                                          valueColor: AlwaysStoppedAnimation<Color>(
-                                                            Colors.white,
-                                                          ),
-                                                        ),
-                                                      )
-                                                    : const Icon(
-                                                        Icons.send_rounded,
-                                                        color: Colors.white,
-                                                      ),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
+                            initialItemCount: _messages.length,
+                            itemBuilder: (context, index, animation) {
+                              final message = _messages[index];
+                              return SlideTransition(
+                                position: animation.drive(Tween(
+                                  begin: Offset(message.isUser ? 1.0 : -1.0, 0.0),
+                                  end: Offset.zero,
+                                ).chain(CurveTween(curve: Curves.easeOutCubic))),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 4),
+                                  child: ChatBubble(
+                                    message: message,
+                                    animation: animation,
+                                    onEdit: message.isUser ? _handleMessageEdit : null,
                                   ),
                                 ),
-                              ],
+                              );
+                            },
+                          ),
+                        ),
+                        if (_isTyping) const TypingIndicator(),
+                        ClipRRect(
+                          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                          child: BackdropFilter(
+                            filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    Colors.white.withOpacity(0.85),
+                                    Colors.teal.withOpacity(0.05),
+                                    Colors.purple.withOpacity(0.05),
+                                  ],
+                                  stops: const [0.7, 0.8, 1.0],
+                                ),
+                                border: Border(
+                                  top: BorderSide(
+                                    color: Colors.white.withOpacity(0.7),
+                                    width: 1,
+                                  ),
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.05),
+                                    blurRadius: 20,
+                                    offset: const Offset(0, -5),
+                                  ),
+                                ],
+                              ),
+                              padding: EdgeInsets.only(
+                                left: FeludaTheme.spacing16,
+                                right: FeludaTheme.spacing16,
+                                top: FeludaTheme.spacing12,
+                                bottom: MediaQuery.of(context).padding.bottom + FeludaTheme.spacing12,
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.9),
+                                        borderRadius: BorderRadius.circular(24),
+                                        border: Border.all(
+                                          color: Colors.blue.withOpacity(0.2),
+                                        ),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.blue.withOpacity(0.1),
+                                            blurRadius: 12,
+                                            spreadRadius: 1,
+                                            offset: const Offset(0, 2),
+                                          ),
+                                        ],
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          _buildFooterIconButton(
+                                            icon: Icons.attach_file,
+                                            onPressed: _pickFile,
+                                            tooltip: 'Attach file',
+                                          ),
+                                          Expanded(
+                                            child: TextField(
+                                              controller: _messageController,
+                                              decoration: InputDecoration(
+                                                hintText: 'Type a message...',
+                                                hintStyle: TextStyle(
+                                                  color: Colors.grey.shade400,
+                                                  fontSize: 14,
+                                                ),
+                                                border: InputBorder.none,
+                                                contentPadding: const EdgeInsets.symmetric(
+                                                  horizontal: 16,
+                                                  vertical: 12,
+                                                ),
+                                              ),
+                                              minLines: 1,
+                                              maxLines: 5,
+                                              textInputAction: TextInputAction.newline,
+                                              onSubmitted: (value) {
+                                                if (!_isLoading) _sendMessage();
+                                              },
+                                            ),
+                                          ),
+                                          AnimatedContainer(
+                                            duration: const Duration(milliseconds: 200),
+                                            margin: const EdgeInsets.all(4),
+                                            decoration: BoxDecoration(
+                                              gradient: LinearGradient(
+                                                begin: Alignment.topLeft,
+                                                end: Alignment.bottomRight,
+                                                colors: [
+                                                  Theme.of(context).primaryColor,
+                                                  Color.lerp(
+                                                    Theme.of(context).primaryColor,
+                                                    Colors.purple,
+                                                    0.3,
+                                                  )!,
+                                                ],
+                                              ),
+                                              borderRadius: BorderRadius.circular(20),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: Theme.of(context).primaryColor.withOpacity(0.3),
+                                                  blurRadius: 8,
+                                                  offset: const Offset(0, 2),
+                                                ),
+                                              ],
+                                            ),
+                                            child: Material(
+                                              color: Colors.transparent,
+                                              child: IconButton(
+                                                onPressed: _isLoading ? null : _sendMessage,
+                                                icon: AnimatedSwitcher(
+                                                  duration: const Duration(milliseconds: 200),
+                                                  child: _isLoading
+                                                      ? const SizedBox(
+                                                          width: 20,
+                                                          height: 20,
+                                                          child: CircularProgressIndicator(
+                                                            strokeWidth: 2,
+                                                            valueColor: AlwaysStoppedAnimation<Color>(
+                                                              Colors.white,
+                                                            ),
+                                                          ),
+                                                        )
+                                                      : const Icon(
+                                                          Icons.send_rounded,
+                                                          color: Colors.white,
+                                                        ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
-                      ),
+                      ],
                     ),
                   ],
                 ),
               ),
       ),
+    );
+  }
+
+  Widget _buildHeaderIconButton({
+    required IconData icon,
+    required VoidCallback onPressed,
+    required String tooltip,
+  }) {
+    return Container(
+      width: 32,
+      height: 32,
+      margin: const EdgeInsets.symmetric(horizontal: 2),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        color: Colors.white.withOpacity(0.1),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: IconButton(
+          icon: Icon(icon, size: 18),
+          onPressed: onPressed,
+          tooltip: tooltip,
+          padding: EdgeInsets.zero,
+          splashRadius: 16,
+          color: Theme.of(context).primaryColor,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFooterIconButton({
+    required IconData icon,
+    required VoidCallback onPressed,
+    required String tooltip,
+  }) {
+    return StatefulBuilder(
+      builder: (context, setState) {
+        bool isHovered = false;
+        
+        return MouseRegion(
+          onEnter: (_) => setState(() => isHovered = true),
+          onExit: (_) => setState(() => isHovered = false),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              color: isHovered 
+                  ? Colors.grey.withOpacity(0.1)
+                  : Colors.transparent,
+            ),
+            child: IconButton(
+              onPressed: onPressed,
+              icon: Icon(
+                icon,
+                size: 20,
+                color: isHovered
+                    ? Theme.of(context).primaryColor
+                    : Colors.grey.shade600,
+              ),
+              tooltip: tooltip,
+              splashRadius: 20,
+            ),
+          ),
+        );
+      },
     );
   }
 }

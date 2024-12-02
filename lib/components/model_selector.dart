@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:feluda_ai/models/ai_model.dart';
 import 'package:feluda_ai/utils/theme.dart';
+import 'dart:ui';
 
-class ModelSelector extends StatelessWidget {
+class ModelSelector extends StatefulWidget {
   final AIModel selectedModel;
   final Function(AIModel) onModelChange;
 
@@ -12,8 +13,34 @@ class ModelSelector extends StatelessWidget {
     required this.onModelChange,
   });
 
+  @override
+  State<ModelSelector> createState() => _ModelSelectorState();
+}
+
+class _ModelSelectorState extends State<ModelSelector> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+  bool _isHovered = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 200),
+      vsync: this,
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
   String _getShortModelName(String name) {
-    // Shorten common model names
     return name
         .replaceAll('Claude', 'C')
         .replaceAll('GPT-4', 'G4')
@@ -24,128 +51,219 @@ class ModelSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return PopupMenuButton<AIModel>(
-      position: PopupMenuPosition.under,
-      offset: const Offset(0, 8),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-      ),
-      constraints: const BoxConstraints(
-        minWidth: 180,
-        maxWidth: 220,
-      ),
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 8,
-          vertical: 4,
-        ),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Theme.of(context).primaryColor.withOpacity(0.1),
-              Theme.of(context).primaryColor.withOpacity(0.05),
-            ],
+    // Define a custom gradient for the selector
+    final selectorGradient = [
+      const Color(0xFF4B7BFF).withOpacity(0.15),  // Light professional blue
+      const Color(0xFF6C63FF).withOpacity(0.1),   // Soft indigo
+    ];
+
+    return MouseRegion(
+      onEnter: (_) {
+        setState(() => _isHovered = true);
+        _controller.forward();
+      },
+      onExit: (_) {
+        setState(() => _isHovered = false);
+        _controller.reverse();
+      },
+      child: ScaleTransition(
+        scale: _scaleAnimation,
+        child: PopupMenuButton<AIModel>(
+          position: PopupMenuPosition.under,
+          offset: const Offset(0, 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
           ),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: Theme.of(context).primaryColor.withOpacity(0.1),
+          constraints: const BoxConstraints(
+            minWidth: 200,
+            maxWidth: 240,
           ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(3),
-              decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor.withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.auto_awesome,
-                size: 8,
-                color: Theme.of(context).primaryColor,
-              ),
+          elevation: 8,
+          color: const Color(0xFFF8FAFF), // Light blue-tinted white
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 8,
             ),
-            const SizedBox(width: 4),
-            Text(
-              _getShortModelName(selectedModel.name),
-              style: TextStyle(
-                fontSize: 11,
-                color: Theme.of(context).primaryColor,
-                fontWeight: FontWeight.w500,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: selectorGradient,
               ),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: const Color(0xFF4B7BFF).withOpacity(_isHovered ? 0.2 : 0.15),
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF4B7BFF).withOpacity(0.1),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
-            const SizedBox(width: 2),
-            Icon(
-              Icons.arrow_drop_down,
-              size: 14,
-              color: Theme.of(context).primaryColor,
-            ),
-          ],
-        ),
-      ),
-      itemBuilder: (context) => AIModels.models
-          .map(
-            (model) => PopupMenuItem<AIModel>(
-              value: model,
-              height: 40,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(3),
-                    decoration: BoxDecoration(
-                      color: model.id == selectedModel.id
-                          ? Theme.of(context).primaryColor.withOpacity(0.1)
-                          : Colors.grey.withOpacity(0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.auto_awesome,
-                      size: 10,
-                      color: model.id == selectedModel.id
-                          ? Theme.of(context).primaryColor
-                          : Colors.grey,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          model.name,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: model.id == selectedModel.id
-                                ? FontWeight.w600
-                                : FontWeight.w400,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        Text(
-                          model.provider,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            fontSize: 10,
-                            color: Colors.grey,
-                          ),
-                        ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        const Color(0xFF4B7BFF).withOpacity(0.2),
+                        const Color(0xFF6C63FF).withOpacity(0.15),
                       ],
                     ),
-                  ),
-                  if (model.id == selectedModel.id)
-                    Icon(
-                      Icons.check,
-                      size: 12,
-                      color: Theme.of(context).primaryColor,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: const Color(0xFF4B7BFF).withOpacity(0.2),
+                      width: 1,
                     ),
-                ],
+                  ),
+                  child: Icon(
+                    Icons.bolt,
+                    size: 10,
+                    color: const Color(0xFF4B7BFF),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  _getShortModelName(widget.selectedModel.name),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF2B4483), // Darker blue for better contrast
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                const Icon(
+                  Icons.expand_more_rounded,
+                  size: 16,
+                  color: Color(0xFF2B4483),
+                ),
+              ],
+            ),
+          ),
+          itemBuilder: (context) => [
+            PopupMenuItem<AIModel>(
+              enabled: false,
+              height: 36,
+              child: Text(
+                'Select AI Model',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: const Color(0xFF4B7BFF).withOpacity(0.8),
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
-          )
-          .toList(),
-      onSelected: onModelChange,
+            const PopupMenuDivider(),
+            ...AIModels.models.map(
+              (model) => PopupMenuItem<AIModel>(
+                value: model,
+                height: 56,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: model.id == widget.selectedModel.id
+                        ? LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              const Color(0xFF4B7BFF).withOpacity(0.1),
+                              const Color(0xFF6C63FF).withOpacity(0.05),
+                            ],
+                          )
+                        : null,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              model.id == widget.selectedModel.id
+                                  ? const Color(0xFF4B7BFF).withOpacity(0.2)
+                                  : Colors.grey.withOpacity(0.15),
+                              model.id == widget.selectedModel.id
+                                  ? const Color(0xFF6C63FF).withOpacity(0.15)
+                                  : Colors.grey.withOpacity(0.1),
+                            ],
+                          ),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: model.id == widget.selectedModel.id
+                                ? const Color(0xFF4B7BFF).withOpacity(0.2)
+                                : Colors.grey.withOpacity(0.2),
+                            width: 1,
+                          ),
+                        ),
+                        child: Icon(
+                          Icons.bolt,
+                          size: 12,
+                          color: model.id == widget.selectedModel.id
+                              ? const Color(0xFF4B7BFF)
+                              : Colors.grey.shade600,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              model.name,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: model.id == widget.selectedModel.id
+                                    ? FontWeight.w600
+                                    : FontWeight.w500,
+                                color: model.id == widget.selectedModel.id
+                                    ? const Color(0xFF4B7BFF)
+                                    : const Color(0xFF2B4483),
+                              ),
+                            ),
+                            Text(
+                              model.provider,
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                fontSize: 11,
+                                color: const Color(0xFF2B4483).withOpacity(0.6),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (model.id == widget.selectedModel.id)
+                        Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF4B7BFF).withOpacity(0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.check_rounded,
+                            size: 12,
+                            color: Color(0xFF4B7BFF),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+          onSelected: widget.onModelChange,
+        ),
+      ),
     );
   }
 } 
