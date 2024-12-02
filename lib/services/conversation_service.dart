@@ -95,15 +95,18 @@ class ConversationService {
     try {
       final user = await _getCurrentUser();
       
-      final query = _supabase
-          .from('conversations')
-          .update({'is_deleted': true})
-          .eq('session_id', sessionId);
-
       if (user != null) {
-        await query.eq('user_id', user.id);
+        await _supabase
+            .from('conversations')
+            .update({'is_deleted': true})
+            .eq('session_id', sessionId)
+            .eq('user_id', user.id);
       } else {
-        await query.is_('user_id', null);
+        await _supabase
+            .from('conversations')
+            .update({'is_deleted': true})
+            .eq('session_id', sessionId)
+            .eq('user_id', '');
       }
     } catch (e) {
       throw Exception('Error clearing conversation history: $e');
@@ -140,15 +143,18 @@ class ConversationService {
     try {
       final user = await _getCurrentUser();
       
-      final query = _supabase
-          .from('conversations')
-          .update({'is_deleted': true})
-          .eq('session_id', sessionId);
-
       if (user != null) {
-        await query.eq('user_id', user.id);
+        await _supabase
+            .from('conversations')
+            .update({'is_deleted': true})
+            .eq('session_id', sessionId)
+            .eq('user_id', user.id);
       } else {
-        await query.is_('user_id', null);
+        await _supabase
+            .from('conversations')
+            .update({'is_deleted': true})
+            .eq('session_id', sessionId)
+            .eq('user_id', '');
       }
     } catch (e) {
       throw Exception('Error deleting chat session: $e');

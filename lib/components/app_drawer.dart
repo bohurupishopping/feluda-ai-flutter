@@ -47,17 +47,13 @@ class _AppDrawerState extends State<AppDrawer> {
   }
 
   void _setupChatUpdateListener() {
-    // Create the channel first
     _subscription = Supabase.instance.client
         .channel('public:conversations')
-        .on(
-          RealtimeListenTypes.postgresChanges,
-          ChannelFilter(
-            event: 'INSERT',
-            schema: 'public',
-            table: 'conversations',
-          ),
-          (payload, [ref]) {
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'conversations',
+          callback: (payload) {
             _loadChatSessions();
           },
         );
@@ -117,7 +113,7 @@ class _AppDrawerState extends State<AppDrawer> {
             metadata
           ''')
           .eq('is_deleted', false)
-          .eq('user_id', user?.id)
+          .eq('user_id', user?.id ?? '')
           .order('timestamp', ascending: false);
 
       // Process and group by session

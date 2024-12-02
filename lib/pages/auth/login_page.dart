@@ -36,6 +36,10 @@ class _LoginPageState extends State<LoginPage> {
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
+
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, '/chat');
+      }
     } on AuthException catch (error) {
       setState(() {
         _errorMessage = error.message;

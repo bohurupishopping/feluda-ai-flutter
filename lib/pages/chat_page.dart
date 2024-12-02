@@ -15,6 +15,8 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:feluda_ai/services/file_picker_service.dart';
 import 'package:cross_file/cross_file.dart';
+import 'package:flutter/services.dart' show Clipboard, ClipboardData;
+import 'package:flutter_markdown/flutter_markdown.dart';
 
 class ChatMessage {
   final String text;
@@ -331,118 +333,134 @@ I'm your AI assistant, ready to help you with:
     _listKey = GlobalKey<AnimatedListState>();
   }
 
+  void _handleMessageEdit(String originalText) {
+    _messageController.text = originalText;
+    _messageController.selection = TextSelection.fromPosition(
+      TextPosition(offset: originalText.length),
+    );
+    FocusScope.of(context).requestFocus();
+  }
+
   @override
   Widget build(BuildContext context) {
     return NetworkAwareWidget(
       child: Scaffold(
         appBar: AppBar(
           elevation: 0,
-          backgroundColor: Colors.white.withOpacity(0.8),
+          backgroundColor: Colors.transparent,
           flexibleSpace: ClipRect(
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
               child: Container(
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      Colors.white.withOpacity(0.7),
-                      Colors.white.withOpacity(0.5),
+                      Color(0xFFE8EEFF),  // Light professional blue
+                      Color(0xFFE2E8FF),  // Slightly deeper professional blue
                     ],
                   ),
                 ),
               ),
             ),
           ),
-          title: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          title: Row(
             children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(2),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Theme.of(context).primaryColor.withOpacity(0.2),
-                      ),
-                      gradient: LinearGradient(
-                        colors: [
-                          Theme.of(context).primaryColor.withOpacity(0.1),
-                          Theme.of(context).primaryColor.withOpacity(0.05),
-                        ],
-                      ),
-                    ),
-                    child: CircleAvatar(
-                      radius: 15,
-                      backgroundImage: AssetImage(Assets.aiIcon),
-                    ),
+              Container(
+                padding: const EdgeInsets.all(1),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Theme.of(context).primaryColor.withOpacity(0.2),
+                    width: 0.5,
                   ),
-                  const SizedBox(width: FeludaTheme.spacing8),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'FeludaAI',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      if (_currentSessionId != null)
-                        Text(
-                          'Continuing conversation',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Theme.of(context).textTheme.bodySmall?.color,
-                          ),
-                        ),
+                  gradient: LinearGradient(
+                    colors: [
+                      Theme.of(context).primaryColor.withOpacity(0.1),
+                      Theme.of(context).primaryColor.withOpacity(0.05),
                     ],
                   ),
-                ],
+                ),
+                child: CircleAvatar(
+                  radius: 12,
+                  backgroundImage: AssetImage(Assets.aiIcon),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'FeludaAI',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    if (_currentSessionId != null)
+                      Text(
+                        'Continuing conversation',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: Theme.of(context).textTheme.bodySmall?.color,
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ],
           ),
           actions: [
             Padding(
-              padding: const EdgeInsets.only(right: FeludaTheme.spacing8),
+              padding: const EdgeInsets.only(right: 4),
               child: ModelSelector(
                 selectedModel: _selectedModel,
                 onModelChange: _handleModelChange,
               ),
             ),
-            IconButton(
-              icon: const Icon(Icons.clear),
-              onPressed: () async {
-                try {
-                  await _conversationService.clearConversationHistory();
-                  setState(() {
-                    _messages.clear();
-                  });
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Chat history cleared')),
-                    );
+            SizedBox(
+              width: 32,
+              child: IconButton(
+                icon: const Icon(Icons.clear, size: 20),
+                onPressed: () async {
+                  try {
+                    await _conversationService.clearConversationHistory();
+                    setState(() {
+                      _messages.clear();
+                    });
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Chat history cleared')),
+                      );
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Error clearing chat history: ${e.toString()}'),
+                          backgroundColor: FeludaTheme.errorColor,
+                        ),
+                      );
+                    }
                   }
-                } catch (e) {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Error clearing chat history: ${e.toString()}'),
-                        backgroundColor: FeludaTheme.errorColor,
-                      ),
-                    );
-                  }
-                }
-              },
-              tooltip: 'Clear chat',
+                },
+                tooltip: 'Clear chat',
+                padding: EdgeInsets.zero,
+              ),
             ),
-            IconButton(
-              icon: const Icon(Icons.add),
-              onPressed: _startNewChat,
-              tooltip: 'New Chat',
+            SizedBox(
+              width: 32,
+              child: IconButton(
+                icon: const Icon(Icons.add, size: 20),
+                onPressed: _startNewChat,
+                tooltip: 'New Chat',
+                padding: EdgeInsets.zero,
+              ),
             ),
+            const SizedBox(width: 4),
           ],
         ),
         drawer: const AppDrawer(),
@@ -451,71 +469,95 @@ I'm your AI assistant, ready to help you with:
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 16),
-                    Text('Loading conversation...'),
+                    CircularProgressIndicator(
+                      strokeWidth: 2,
+                    ),
+                    SizedBox(height: 12),
+                    Text(
+                      'Loading conversation...',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey,
+                      ),
+                    ),
                   ],
                 ),
               )
             : Container(
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
+                    stops: [0.0, 0.3, 0.6, 1.0],
                     colors: [
-                      Colors.blue.withOpacity(0.1),
-                      Colors.purple.withOpacity(0.1),
-                      Colors.pink.withOpacity(0.1),
+                      Color(0xFFE8EEFF),  // Light professional blue
+                      Color(0xFFE2E8FF),  // Slightly deeper professional blue
+                      Color(0xFFDBE4FF),  // Medium professional blue
+                      Color(0xFFD4E0FF),  // Deep professional blue
                     ],
                   ),
                 ),
                 child: Column(
                   children: [
                     Expanded(
-                      child: Container(
-                        color: Colors.transparent,
-                        child: AnimatedList(
-                          key: _listKey,
-                          controller: _scrollController,
-                          padding: const EdgeInsets.all(FeludaTheme.spacing16),
-                          initialItemCount: _messages.length,
-                          itemBuilder: (context, index, animation) {
-                            final message = _messages[index];
-                            return ChatBubble(
+                      child: AnimatedList(
+                        key: _listKey,
+                        controller: _scrollController,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: FeludaTheme.spacing16,
+                          vertical: FeludaTheme.spacing8,
+                        ),
+                        initialItemCount: _messages.length,
+                        itemBuilder: (context, index, animation) {
+                          final message = _messages[index];
+                          return SlideTransition(
+                            position: animation.drive(Tween(
+                              begin: Offset(
+                                message.isUser ? 1.0 : -1.0,
+                                0.0,
+                              ),
+                              end: Offset.zero,
+                            ).chain(CurveTween(
+                              curve: Curves.easeOutCubic,
+                            ))),
+                            child: ChatBubble(
                               message: message,
                               animation: animation,
-                            );
-                          },
-                        ),
+                              onEdit: message.isUser ? _handleMessageEdit : null,
+                            ),
+                          );
+                        },
                       ),
                     ),
                     if (_isTyping)
                       const TypingIndicator(),
                     Container(
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.8),
+                        gradient: const LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Color(0xFFE8EEFF),  // Light professional blue
+                            Color(0xFFE2E8FF),  // Slightly deeper professional blue
+                          ],
+                        ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 10,
-                            offset: const Offset(0, -5),
+                            color: const Color(0xFF4B7BFF).withOpacity(0.03),
+                            blurRadius: 8,
+                            offset: const Offset(0, -2),
                           ),
                         ],
-                        border: Border(
-                          top: BorderSide(
-                            color: Colors.grey.withOpacity(0.2),
-                          ),
-                        ),
                       ),
                       child: ClipRect(
                         child: BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                          filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
                           child: Padding(
                             padding: EdgeInsets.only(
                               left: FeludaTheme.spacing16,
                               right: FeludaTheme.spacing16,
-                              top: FeludaTheme.spacing16,
-                              bottom: MediaQuery.of(context).padding.bottom + FeludaTheme.spacing16,
+                              top: FeludaTheme.spacing12,
+                              bottom: MediaQuery.of(context).padding.bottom + FeludaTheme.spacing12,
                             ),
                             child: Row(
                               children: [
@@ -525,80 +567,87 @@ I'm your AI assistant, ready to help you with:
                                       color: Colors.white,
                                       borderRadius: BorderRadius.circular(24),
                                       border: Border.all(
-                                        color: Colors.grey.withOpacity(0.2),
+                                        color: const Color(0xFFCCDBFF),  // Darker blue border
                                       ),
                                       boxShadow: [
                                         BoxShadow(
-                                          color: Colors.black.withOpacity(0.05),
-                                          blurRadius: 5,
+                                          color: const Color(0xFF3366FF).withOpacity(0.05),  // Darker blue shadow
+                                          blurRadius: 4,
                                           offset: const Offset(0, 2),
                                         ),
                                       ],
                                     ),
                                     child: Row(
                                       children: [
+                                        IconButton(
+                                          onPressed: _pickFile,
+                                          icon: Icon(
+                                            Icons.attach_file,
+                                            size: 20,
+                                            color: Colors.grey.shade600,
+                                          ),
+                                          tooltip: 'Attach file',
+                                        ),
                                         Expanded(
-                                          child: TextFormField(
+                                          child: TextField(
                                             controller: _messageController,
                                             decoration: InputDecoration(
                                               hintText: 'Type a message...',
                                               hintStyle: TextStyle(
-                                                color: Colors.grey.withOpacity(0.8),
+                                                color: Colors.grey.shade400,
+                                                fontSize: 14,
                                               ),
                                               border: InputBorder.none,
                                               contentPadding: const EdgeInsets.symmetric(
-                                                horizontal: FeludaTheme.spacing16,
-                                                vertical: FeludaTheme.spacing12,
+                                                horizontal: 16,
+                                                vertical: 12,
                                               ),
                                             ),
-                                            maxLines: 4,
                                             minLines: 1,
-                                            onFieldSubmitted: (_) => _sendMessage(),
+                                            maxLines: 5,
+                                            textInputAction: TextInputAction.newline,
+                                            onSubmitted: (value) {
+                                              if (!_isLoading) _sendMessage();
+                                            },
                                           ),
                                         ),
-                                        IconButton(
-                                          icon: Icon(
-                                            Icons.attach_file,
-                                            color: Theme.of(context).primaryColor.withOpacity(0.7),
+                                        Container(
+                                          margin: const EdgeInsets.all(4),
+                                          decoration: BoxDecoration(
+                                            gradient: LinearGradient(
+                                              colors: [
+                                                Theme.of(context).primaryColor,
+                                                Theme.of(context).primaryColor.withOpacity(0.8),
+                                              ],
+                                            ),
+                                            borderRadius: BorderRadius.circular(20),
                                           ),
-                                          onPressed: _pickFile,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: FeludaTheme.spacing8),
-                                Container(
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        Theme.of(context).primaryColor,
-                                        Theme.of(context).primaryColor.withOpacity(0.8),
-                                      ],
-                                    ),
-                                    borderRadius: BorderRadius.circular(24),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Theme.of(context).primaryColor.withOpacity(0.3),
-                                        blurRadius: 5,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Material(
-                                    color: Colors.transparent,
-                                    child: IconButton(
-                                      onPressed: _isLoading ? null : _sendMessage,
-                                      icon: _isLoading
-                                          ? const SizedBox(
-                                              width: 20,
-                                              height: 20,
-                                              child: CircularProgressIndicator(
-                                                strokeWidth: 2,
-                                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                          child: Material(
+                                            color: Colors.transparent,
+                                            child: IconButton(
+                                              onPressed: _isLoading ? null : _sendMessage,
+                                              icon: AnimatedSwitcher(
+                                                duration: const Duration(milliseconds: 200),
+                                                child: _isLoading
+                                                    ? const SizedBox(
+                                                        width: 20,
+                                                        height: 20,
+                                                        child: CircularProgressIndicator(
+                                                          strokeWidth: 2,
+                                                          valueColor: AlwaysStoppedAnimation<Color>(
+                                                            Colors.white,
+                                                          ),
+                                                        ),
+                                                      )
+                                                    : const Icon(
+                                                        Icons.send_rounded,
+                                                        color: Colors.white,
+                                                      ),
                                               ),
-                                            )
-                                          : const Icon(Icons.send, color: Colors.white),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ),
@@ -616,65 +665,251 @@ I'm your AI assistant, ready to help you with:
   }
 }
 
-class ChatBubble extends StatelessWidget {
+class ChatBubble extends StatefulWidget {
   final ChatMessage message;
   final Animation<double> animation;
+  final Function(String)? onEdit;
 
   const ChatBubble({
     super.key,
     required this.message,
     required this.animation,
+    this.onEdit,
   });
+
+  @override
+  State<ChatBubble> createState() => _ChatBubbleState();
+}
+
+class _ChatBubbleState extends State<ChatBubble> {
+  bool _isCopied = false;
+  bool _isHovered = false;
+
+  Future<void> _copyToClipboard() async {
+    await Clipboard.setData(ClipboardData(text: widget.message.text));
+    setState(() => _isCopied = true);
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _isCopied = false);
+    });
+  }
+
+  void _showContextMenu(BuildContext context, Offset tapPosition) {
+    final RenderBox overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
+    
+    showMenu(
+      context: context,
+      position: RelativeRect.fromRect(
+        tapPosition & const Size(40, 40),
+        Offset.zero & overlay.size,
+      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      items: [
+        PopupMenuItem(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.copy,
+                size: 16,
+                color: Theme.of(context).textTheme.bodyLarge?.color,
+              ),
+              const SizedBox(width: 8),
+              const Text('Copy'),
+            ],
+          ),
+          onTap: _copyToClipboard,
+        ),
+        if (widget.message.isUser && widget.onEdit != null)
+          PopupMenuItem(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.edit,
+                  size: 16,
+                  color: Theme.of(context).textTheme.bodyLarge?.color,
+                ),
+                const SizedBox(width: 8),
+                const Text('Edit'),
+              ],
+            ),
+            onTap: () {
+              // Delay the edit to allow menu to close
+              Future.delayed(const Duration(milliseconds: 200), () {
+                if (widget.onEdit != null) {
+                  widget.onEdit!(widget.message.text);
+                }
+              });
+            },
+          ),
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return SizeTransition(
-      sizeFactor: animation,
+      sizeFactor: widget.animation,
       child: FadeTransition(
-        opacity: animation,
-        child: Align(
-          alignment: message.isUser ? Alignment.centerRight : Alignment.centerLeft,
-          child: Container(
-            constraints: BoxConstraints(
-              maxWidth: MediaQuery.of(context).size.width * 0.75,
-            ),
-            margin: EdgeInsets.only(
-              top: FeludaTheme.spacing8,
-              bottom: FeludaTheme.spacing8,
-              left: message.isUser ? FeludaTheme.spacing32 : 0,
-              right: message.isUser ? 0 : FeludaTheme.spacing32,
-            ),
-            padding: const EdgeInsets.symmetric(
-              horizontal: FeludaTheme.spacing16,
-              vertical: FeludaTheme.spacing12,
-            ),
-            decoration: BoxDecoration(
-              color: message.isUser
-                  ? FeludaTheme.primaryColor
-                  : Theme.of(context).cardColor,
-              borderRadius: BorderRadius.only(
-                topLeft: const Radius.circular(16),
-                topRight: const Radius.circular(16),
-                bottomLeft: Radius.circular(message.isUser ? 16 : 4),
-                bottomRight: Radius.circular(message.isUser ? 4 : 16),
+        opacity: widget.animation,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: MouseRegion(
+            onEnter: (_) => setState(() => _isHovered = true),
+            onExit: (_) => setState(() => _isHovered = false),
+            child: GestureDetector(
+              onLongPressStart: (details) => _showContextMenu(
+                context,
+                details.globalPosition,
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 5,
-                  offset: const Offset(0, 2),
+              child: Align(
+                alignment: widget.message.isUser ? Alignment.centerRight : Alignment.centerLeft,
+                child: Stack(
+                  children: [
+                    Container(
+                      constraints: BoxConstraints(
+                        maxWidth: MediaQuery.of(context).size.width * 0.75,
+                      ),
+                      margin: EdgeInsets.only(
+                        top: FeludaTheme.spacing8,
+                        bottom: FeludaTheme.spacing8,
+                        left: widget.message.isUser ? FeludaTheme.spacing32 : FeludaTheme.spacing8,
+                        right: widget.message.isUser ? FeludaTheme.spacing8 : FeludaTheme.spacing32,
+                      ),
+                      padding: const EdgeInsets.all(FeludaTheme.spacing16),
+                      decoration: BoxDecoration(
+                        color: widget.message.isUser
+                            ? Theme.of(context).primaryColor
+                            : Theme.of(context).cardColor.withOpacity(0.7),
+                        borderRadius: BorderRadius.only(
+                          topLeft: const Radius.circular(20),
+                          topRight: const Radius.circular(20),
+                          bottomLeft: Radius.circular(widget.message.isUser ? 20 : 8),
+                          bottomRight: Radius.circular(widget.message.isUser ? 8 : 20),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 5,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                        border: Border.all(
+                          color: widget.message.isUser
+                              ? Colors.transparent
+                              : Theme.of(context).dividerColor.withOpacity(0.1),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (!widget.message.isUser) ...[
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                CircleAvatar(
+                                  radius: 10,
+                                  backgroundImage: AssetImage(Assets.aiIcon),
+                                ),
+                                const SizedBox(width: FeludaTheme.spacing8),
+                                Text(
+                                  'FeludaAI',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Theme.of(context).textTheme.bodySmall?.color,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: FeludaTheme.spacing8),
+                          ],
+                          widget.message.isUser
+                              ? Text(
+                                  widget.message.text,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    height: 1.5,
+                                  ),
+                                )
+                              : MarkdownBody(
+                                  data: widget.message.text,
+                                  styleSheet: MarkdownStyleSheet(
+                                    p: TextStyle(
+                                      color: Theme.of(context).textTheme.bodyLarge?.color,
+                                      height: 1.5,
+                                    ),
+                                    code: TextStyle(
+                                      backgroundColor: Theme.of(context).colorScheme.surface,
+                                      fontFamily: 'monospace',
+                                    ),
+                                    codeblockDecoration: BoxDecoration(
+                                      color: Theme.of(context).colorScheme.surface,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                ),
+                          const SizedBox(height: FeludaTheme.spacing4),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                _formatTimestamp(widget.message.timestamp),
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: widget.message.isUser
+                                      ? Colors.white.withOpacity(0.7)
+                                      : Theme.of(context).textTheme.bodySmall?.color,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (!widget.message.isUser && (_isHovered || _isCopied))
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: Material(
+                          color: Colors.transparent,
+                          child: IconButton(
+                            icon: Icon(
+                              _isCopied ? Icons.check : Icons.copy,
+                              size: 16,
+                              color: _isCopied
+                                  ? Colors.green
+                                  : Theme.of(context).textTheme.bodySmall?.color,
+                            ),
+                            onPressed: _copyToClipboard,
+                            tooltip: _isCopied ? 'Copied!' : 'Copy message',
+                            splashRadius: 20,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
-              ],
-            ),
-            child: Text(
-              message.text,
-              style: TextStyle(
-                color: message.isUser ? Colors.white : null,
               ),
             ),
           ),
         ),
       ),
     );
+  }
+
+  String _formatTimestamp(DateTime timestamp) {
+    final now = DateTime.now();
+    final difference = now.difference(timestamp);
+
+    if (difference.inMinutes < 1) {
+      return 'Just now';
+    } else if (difference.inHours < 1) {
+      return '${difference.inMinutes}m ago';
+    } else if (difference.inDays < 1) {
+      return '${difference.inHours}h ago';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays}d ago';
+    } else {
+      return '${timestamp.day}/${timestamp.month}/${timestamp.year}';
+    }
   }
 } 
