@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:feluda_ai/components/typing_indicator.dart';
 import 'package:feluda_ai/services/conversation_service.dart';
 import 'package:feluda_ai/utils/assets.dart';
+import 'package:feluda_ai/components/network_aware_widget.dart';
 
 class ChatMessage {
   final String text;
@@ -112,16 +113,16 @@ class _ChatPageState extends State<ChatPage> {
   void _showWelcomeMessage() {
     _messages.clear();
     _addMessage(ChatMessage(
-      text: '''# নমস্কার! 🙏
+      text: '''# Welcome to Feluda AI!
 
-আমি ফেলুদা এ.আই। জ্ঞান আর মগজাস্ত্র নিয়ে তোমার কাছে এসেছি, লালমোহন বাবুর মতো গল্প বলার ক্ষমতা আমার নেই, কিন্তু টেলিপ‍্যাথির জোর আছে!
+I'm your AI assistant, ready to help you with:
 
-- 🔍 **Problem Solving** 
-- 📚 **Knowledge Sharing** 
-- 💡 **Creative Assistance**
-- 🤝 **Thoughtful Discussions**
+- 🔍 **Problem Solving**
+- 📚 **Knowledge Sharing**
+- 💡 **Creative Tasks**
+- 🤝 **Discussions**
 
-*"কোনো প্রশ্ন আছে?" - Do you have any questions?* 🕵️‍♂️''',
+*How can I assist you today?* 🕵️‍♂️''',
       isUser: false,
       timestamp: DateTime.now(),
       role: 'welcome',
@@ -270,285 +271,287 @@ class _ChatPageState extends State<ChatPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: Colors.white.withOpacity(0.8),
-        flexibleSpace: ClipRect(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Colors.white.withOpacity(0.7),
-                    Colors.white.withOpacity(0.5),
-                  ],
+    return NetworkAwareWidget(
+      child: Scaffold(
+        appBar: AppBar(
+          elevation: 0,
+          backgroundColor: Colors.white.withOpacity(0.8),
+          flexibleSpace: ClipRect(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Colors.white.withOpacity(0.7),
+                      Colors.white.withOpacity(0.5),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(2),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Theme.of(context).primaryColor.withOpacity(0.2),
-                    ),
-                    gradient: LinearGradient(
-                      colors: [
-                        Theme.of(context).primaryColor.withOpacity(0.1),
-                        Theme.of(context).primaryColor.withOpacity(0.05),
-                      ],
-                    ),
-                  ),
-                  child: CircleAvatar(
-                    radius: 15,
-                    backgroundImage: AssetImage(Assets.aiIcon),
-                  ),
-                ),
-                const SizedBox(width: FeludaTheme.spacing8),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'FeludaAI',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Theme.of(context).primaryColor.withOpacity(0.2),
+                      ),
+                      gradient: LinearGradient(
+                        colors: [
+                          Theme.of(context).primaryColor.withOpacity(0.1),
+                          Theme.of(context).primaryColor.withOpacity(0.05),
+                        ],
                       ),
                     ),
-                    if (_currentSessionId != null)
-                      Text(
-                        'Continuing conversation',
+                    child: CircleAvatar(
+                      radius: 15,
+                      backgroundImage: AssetImage(Assets.aiIcon),
+                    ),
+                  ),
+                  const SizedBox(width: FeludaTheme.spacing8),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'FeludaAI',
                         style: TextStyle(
-                          fontSize: 12,
-                          color: Theme.of(context).textTheme.bodySmall?.color,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                  ],
-                ),
-              ],
+                      if (_currentSessionId != null)
+                        Text(
+                          'Continuing conversation',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Theme.of(context).textTheme.bodySmall?.color,
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+          actions: [
+            Padding(
+              padding: const EdgeInsets.only(right: FeludaTheme.spacing8),
+              child: ModelSelector(
+                selectedModel: _selectedModel,
+                onModelChange: _handleModelChange,
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.clear),
+              onPressed: () async {
+                try {
+                  await _conversationService.clearConversationHistory();
+                  setState(() {
+                    _messages.clear();
+                  });
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Chat history cleared')),
+                    );
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Error clearing chat history: ${e.toString()}'),
+                        backgroundColor: FeludaTheme.errorColor,
+                      ),
+                    );
+                  }
+                }
+              },
+              tooltip: 'Clear chat',
+            ),
+            IconButton(
+              icon: const Icon(Icons.add),
+              onPressed: _startNewChat,
+              tooltip: 'New Chat',
             ),
           ],
         ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: FeludaTheme.spacing8),
-            child: ModelSelector(
-              selectedModel: _selectedModel,
-              onModelChange: _handleModelChange,
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.clear),
-            onPressed: () async {
-              try {
-                await _conversationService.clearConversationHistory();
-                setState(() {
-                  _messages.clear();
-                });
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Chat history cleared')),
-                  );
-                }
-              } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Error clearing chat history: ${e.toString()}'),
-                      backgroundColor: FeludaTheme.errorColor,
-                    ),
-                  );
-                }
-              }
-            },
-            tooltip: 'Clear chat',
-          ),
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: _startNewChat,
-            tooltip: 'New Chat',
-          ),
-        ],
-      ),
-      drawer: const AppDrawer(),
-      body: _isLoadingHistory
-          ? const Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('Loading conversation...'),
-                ],
-              ),
-            )
-          : Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Colors.blue.withOpacity(0.1),
-                    Colors.purple.withOpacity(0.1),
-                    Colors.pink.withOpacity(0.1),
+        drawer: const AppDrawer(),
+        body: _isLoadingHistory
+            ? const Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 16),
+                    Text('Loading conversation...'),
                   ],
                 ),
-              ),
-              child: Column(
-                children: [
-                  Expanded(
-                    child: Container(
-                      color: Colors.transparent,
-                      child: AnimatedList(
-                        key: _listKey,
-                        controller: _scrollController,
-                        padding: const EdgeInsets.all(FeludaTheme.spacing16),
-                        initialItemCount: _messages.length,
-                        itemBuilder: (context, index, animation) {
-                          final message = _messages[index];
-                          return ChatBubble(
-                            message: message,
-                            animation: animation,
-                          );
-                        },
-                      ),
-                    ),
+              )
+            : Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Colors.blue.withOpacity(0.1),
+                      Colors.purple.withOpacity(0.1),
+                      Colors.pink.withOpacity(0.1),
+                    ],
                   ),
-                  if (_isTyping)
-                    const TypingIndicator(),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.8),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, -5),
-                        ),
-                      ],
-                      border: Border(
-                        top: BorderSide(
-                          color: Colors.grey.withOpacity(0.2),
+                ),
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        color: Colors.transparent,
+                        child: AnimatedList(
+                          key: _listKey,
+                          controller: _scrollController,
+                          padding: const EdgeInsets.all(FeludaTheme.spacing16),
+                          initialItemCount: _messages.length,
+                          itemBuilder: (context, index, animation) {
+                            final message = _messages[index];
+                            return ChatBubble(
+                              message: message,
+                              animation: animation,
+                            );
+                          },
                         ),
                       ),
                     ),
-                    child: ClipRect(
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                        child: Padding(
-                          padding: EdgeInsets.only(
-                            left: FeludaTheme.spacing16,
-                            right: FeludaTheme.spacing16,
-                            top: FeludaTheme.spacing16,
-                            bottom: MediaQuery.of(context).padding.bottom + FeludaTheme.spacing16,
+                    if (_isTyping)
+                      const TypingIndicator(),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.8),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, -5),
                           ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(24),
-                                    border: Border.all(
-                                      color: Colors.grey.withOpacity(0.2),
+                        ],
+                        border: Border(
+                          top: BorderSide(
+                            color: Colors.grey.withOpacity(0.2),
+                          ),
+                        ),
+                      ),
+                      child: ClipRect(
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                          child: Padding(
+                            padding: EdgeInsets.only(
+                              left: FeludaTheme.spacing16,
+                              right: FeludaTheme.spacing16,
+                              top: FeludaTheme.spacing16,
+                              bottom: MediaQuery.of(context).padding.bottom + FeludaTheme.spacing16,
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(24),
+                                      border: Border.all(
+                                        color: Colors.grey.withOpacity(0.2),
+                                      ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.05),
+                                          blurRadius: 5,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ],
                                     ),
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          child: TextFormField(
+                                            controller: _messageController,
+                                            decoration: InputDecoration(
+                                              hintText: 'Type a message...',
+                                              hintStyle: TextStyle(
+                                                color: Colors.grey.withOpacity(0.8),
+                                              ),
+                                              border: InputBorder.none,
+                                              contentPadding: const EdgeInsets.symmetric(
+                                                horizontal: FeludaTheme.spacing16,
+                                                vertical: FeludaTheme.spacing12,
+                                              ),
+                                            ),
+                                            maxLines: 4,
+                                            minLines: 1,
+                                            onFieldSubmitted: (_) => _sendMessage(),
+                                          ),
+                                        ),
+                                        IconButton(
+                                          icon: Icon(
+                                            Icons.attach_file,
+                                            color: Theme.of(context).primaryColor.withOpacity(0.7),
+                                          ),
+                                          onPressed: () {
+                                            // TODO: Implement file attachment
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: FeludaTheme.spacing8),
+                                Container(
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        Theme.of(context).primaryColor,
+                                        Theme.of(context).primaryColor.withOpacity(0.8),
+                                      ],
+                                    ),
+                                    borderRadius: BorderRadius.circular(24),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.black.withOpacity(0.05),
+                                        color: Theme.of(context).primaryColor.withOpacity(0.3),
                                         blurRadius: 5,
                                         offset: const Offset(0, 2),
                                       ),
                                     ],
                                   ),
-                                  child: Row(
-                                    children: [
-                                      Expanded(
-                                        child: TextFormField(
-                                          controller: _messageController,
-                                          decoration: InputDecoration(
-                                            hintText: 'Type a message...',
-                                            hintStyle: TextStyle(
-                                              color: Colors.grey.withOpacity(0.8),
-                                            ),
-                                            border: InputBorder.none,
-                                            contentPadding: const EdgeInsets.symmetric(
-                                              horizontal: FeludaTheme.spacing16,
-                                              vertical: FeludaTheme.spacing12,
-                                            ),
-                                          ),
-                                          maxLines: 4,
-                                          minLines: 1,
-                                          onFieldSubmitted: (_) => _sendMessage(),
-                                        ),
-                                      ),
-                                      IconButton(
-                                        icon: Icon(
-                                          Icons.attach_file,
-                                          color: Theme.of(context).primaryColor.withOpacity(0.7),
-                                        ),
-                                        onPressed: () {
-                                          // TODO: Implement file attachment
-                                        },
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: FeludaTheme.spacing8),
-                              Container(
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      Theme.of(context).primaryColor,
-                                      Theme.of(context).primaryColor.withOpacity(0.8),
-                                    ],
-                                  ),
-                                  borderRadius: BorderRadius.circular(24),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Theme.of(context).primaryColor.withOpacity(0.3),
-                                      blurRadius: 5,
-                                      offset: const Offset(0, 2),
+                                  child: Material(
+                                    color: Colors.transparent,
+                                    child: IconButton(
+                                      onPressed: _isLoading ? null : _sendMessage,
+                                      icon: _isLoading
+                                          ? const SizedBox(
+                                              width: 20,
+                                              height: 20,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                              ),
+                                            )
+                                          : const Icon(Icons.send, color: Colors.white),
                                     ),
-                                  ],
-                                ),
-                                child: Material(
-                                  color: Colors.transparent,
-                                  child: IconButton(
-                                    onPressed: _isLoading ? null : _sendMessage,
-                                    icon: _isLoading
-                                        ? const SizedBox(
-                                            width: 20,
-                                            height: 20,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                            ),
-                                          )
-                                        : const Icon(Icons.send, color: Colors.white),
                                   ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
+      ),
     );
   }
 }

@@ -6,6 +6,8 @@ import 'package:feluda_ai/pages/settings_page.dart';
 import 'package:feluda_ai/pages/profile_page.dart';
 import 'package:feluda_ai/utils/theme.dart';
 import 'package:feluda_ai/utils/constants.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,6 +17,11 @@ void main() async {
     url: Constants.supabaseUrl,
     anonKey: Constants.supabaseAnonKey,
   );
+
+  // Initialize Connectivity (skip for web)
+  if (!kIsWeb) {
+    await Connectivity().checkConnectivity();
+  }
   
   runApp(const FeludaApp());
 }
