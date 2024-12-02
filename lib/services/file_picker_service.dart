@@ -3,6 +3,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:feluda_ai/services/permission_service.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import 'package:cross_file/cross_file.dart';
+import 'package:flutter/material.dart';
 
 class FilePickerService {
   final PermissionService _permissionService = PermissionService();
@@ -11,68 +12,99 @@ class FilePickerService {
     'jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx', 'txt'
   ];
 
-  Future<XFile?> pickFile() async {
+  Future<XFile?> pickFile({BuildContext? context}) async {
     try {
       // For web, use FilePicker directly
       if (kIsWeb) {
-        final result = await FilePicker.platform.pickFiles(
-          type: FileType.custom,
-          allowedExtensions: _supportedExtensions,
-          allowMultiple: false,
-          withData: true,
-        );
-
-        if (result != null && result.files.isNotEmpty) {
-          final file = result.files.first;
-          if (file.bytes != null) {
-            return XFile.fromData(
-              file.bytes!,
-              name: file.name,
-              mimeType: _getMimeType(file.extension ?? ''),
-            );
-          }
-        }
-        return null;
+        return await _pickFileWeb();
       }
 
-      // For mobile platforms
-      if (!kIsWeb) {
-        final hasPermission = await _permissionService.requestStoragePermission();
-        if (!hasPermission) {
-          throw Exception('Storage permission denied');
+      // For mobile platforms, check permissions first
+      final hasPermission = await _permissionService.requestStoragePermission();
+      if (!hasPermission) {
+        if (context != null) {
+          _showPermissionDeniedDialog(context);
         }
+        return null;
       }
 
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: _supportedExtensions,
         allowMultiple: false,
-        withData: kIsWeb,
       );
 
-      if (result != null && result.files.isNotEmpty) {
-        final pickedFile = result.files.first;
-        
-        // For web platform
-        if (kIsWeb && pickedFile.bytes != null) {
-          return XFile.fromData(
-            pickedFile.bytes!,
-            name: pickedFile.name,
-            mimeType: _getMimeType(pickedFile.extension ?? ''),
-          );
-        }
-        
-        // For mobile platforms
-        if (!kIsWeb && pickedFile.path != null) {
-          return XFile(pickedFile.path!);
-        }
+      if (result != null && result.files.isNotEmpty && result.files.first.path != null) {
+        return XFile(result.files.first.path!);
       }
       
       return null;
     } catch (e) {
       debugPrint('Error picking file: $e');
-      throw Exception('Error picking file: $e');
+      if (context != null) {
+        _showErrorDialog(context, e.toString());
+      }
+      return null;
     }
+  }
+
+  Future<XFile?> _pickFileWeb() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: _supportedExtensions,
+      allowMultiple: false,
+      withData: true,
+    );
+
+    if (result != null && result.files.isNotEmpty && result.files.first.bytes != null) {
+      return XFile.fromData(
+        result.files.first.bytes!,
+        name: result.files.first.name,
+        mimeType: _getMimeType(result.files.first.extension ?? ''),
+      );
+    }
+    return null;
+  }
+
+  void _showPermissionDeniedDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Permission Required'),
+        content: const Text(
+          'Storage permission is required to pick files. Please grant the permission in app settings.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _permissionService.openSettings();
+            },
+            child: const Text('Open Settings'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showErrorDialog(BuildContext context, String error) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Error'),
+        content: Text(error),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 
   bool isFileSupported(String fileName) {

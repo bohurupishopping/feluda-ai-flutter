@@ -168,9 +168,9 @@ I'm your AI assistant, ready to help you with:
   }
 
   Future<void> _pickFile() async {
-    try {
-      final file = await _filePickerService.pickFile();
-      if (file != null) {
+    final file = await _filePickerService.pickFile(context: context);
+    if (file != null) {
+      try {
         await _filePickerService.validateFile(file);
         setState(() {
           _selectedFile = file;
@@ -192,15 +192,12 @@ I'm your AI assistant, ready to help you with:
             ),
           );
         }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString()),
-            backgroundColor: Colors.red,
-          ),
-        );
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(e.toString())),
+          );
+        }
       }
     }
   }
